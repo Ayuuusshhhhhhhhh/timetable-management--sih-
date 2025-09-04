@@ -2,6 +2,7 @@ const Timetable = require('../models/Timetable');
 const SchedulingService = require('../services/schedulingService');
 const ExportService = require('../services/exportService');
 const { validationResult } = require('express-validator');
+const db = require('../config/database');
 
 const getTimetable = async (req, res) => {
   try {
@@ -176,11 +177,48 @@ const validateTimetable = async (req, res) => {
   }
 };
 
+const createTimetableEntry = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { batch_id, faculty_id, classroom_id, time_slot_id, academic_year } = req.body;
+    
+    // Check for conflicts before creating
+    const conflicts = await Timetable.checkConflicts(
+      batch_id, 
+      faculty_id, 
+      classroom_id, 
+      time_slot_id, 
+      academic_year
+    );
+
+    if (conflicts.length > 0) {
+      return res.status(400).json({ 
+        message: 'Schedule conflict detected', 
+        conflicts 
+      });
+    }
+
+    const entry = await Timetable.create(req.body);
+    res.status(201).json({
+      message: 'Timetable entry created successfully',
+      entry
+    });
+  } catch (error) {
+    console.error('Create timetable entry error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getTimetable,
   generateTimetable,
   approveTimetable,
   publishTimetable,
+  createTimetableEntry,
   updateTimetableEntry,
   deleteTimetableEntry,
   exportTimetablePDF,

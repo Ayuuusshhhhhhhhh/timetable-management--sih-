@@ -34,6 +34,47 @@ class Subject {
   static async findByCode(subjectCode) {
     return db('subjects').where({ subject_code: subjectCode }).first();
   }
+
+  static async getWithFaculty(subjectId) {
+    return db('subjects')
+      .join('faculty_subjects', 'subjects.id', 'faculty_subjects.subject_id')
+      .join('users', 'faculty_subjects.faculty_id', 'users.id')
+      .where('subjects.id', subjectId)
+      .select(
+        'subjects.*',
+        'users.id as faculty_id',
+        'users.first_name as faculty_first_name',
+        'users.last_name as faculty_last_name',
+        'users.department as faculty_department'
+      );
+  }
+
+  static async getStats() {
+    const totalSubjects = await db('subjects').where({ is_active: true }).count('id as count').first();
+    const departmentStats = await db('subjects')
+      .where({ is_active: true })
+      .groupBy('department')
+      .select('department')
+      .count('id as subject_count')
+      .avg('credits as avg_credits');
+
+    const typeStats = await db('subjects')
+      .where({ is_active: true })
+      .groupBy('type')
+      .select('type')
+      .count('id as subject_count')
+      .avg('credits as avg_credits');
+
+    return {
+      total_subjects: totalSubjects.count,
+      by_department: departmentStats,
+      by_type: typeStats
+    };
+  }
+
+  static async hardDelete(id) {
+    return db('subjects').where({ id }).del();
+  }
 }
 
 module.exports = Subject;

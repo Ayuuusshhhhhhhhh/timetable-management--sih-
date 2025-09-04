@@ -9,6 +9,8 @@ const authRoutes = require('./routes/authRoutes');
 const classroomRoutes = require('./routes/classroomRoutes');
 const subjectRoutes = require('./routes/subjectRoutes');
 const batchRoutes = require('./routes/batchRoutes');
+const facultyRoutes = require('./routes/facultyRoutes');
+const timeSlotRoutes = require('./routes/timeSlotRoutes');
 const timetableRoutes = require('./routes/timetableRoutes');
 
 // Middleware
@@ -45,6 +47,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', authenticateToken, classroomRoutes);
 app.use('/api/subjects', authenticateToken, subjectRoutes);
 app.use('/api/batches', authenticateToken, batchRoutes);
+app.use('/api/faculty', authenticateToken, facultyRoutes);
+app.use('/api/time-slots', authenticateToken, timeSlotRoutes);
 app.use('/api/timetable', authenticateToken, timetableRoutes);
 
 // 404 handler

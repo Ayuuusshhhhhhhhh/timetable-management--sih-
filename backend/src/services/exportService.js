@@ -1,5 +1,5 @@
 const PDFDocument = require('pdfkit');
-const ExcelJS = require('exceljs');
+const xl = require('excel4node');
 const Timetable = require('../models/Timetable');
 const moment = require('moment');
 
@@ -108,7 +108,7 @@ class ExportService {
 
   static async exportTimetableToExcel(academicYear, batchId = null, res) {
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new xl.Workbook();
       
       // Get timetable data
       let timetableData;
@@ -121,22 +121,30 @@ class ExportService {
       // Group data by batch
       const groupedData = this.groupTimetableData(timetableData);
 
+      // Style definitions
+      const headerStyle = workbook.createStyle({
+        font: { bold: true, size: 12 },
+        fill: { type: 'pattern', patternType: 'solid', fgColor: 'E0E0E0' },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      });
+
+      const cellStyle = workbook.createStyle({
+        font: { size: 10 },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: true }
+      });
+
+      let sheetIndex = 1;
       // Create worksheet for each batch
       Object.keys(groupedData).forEach(batchName => {
-        const worksheet = workbook.addWorksheet(batchName);
+        const worksheet = workbook.addWorksheet(`${batchName.substring(0, 25)}`);
         const batchData = groupedData[batchName];
 
         // Set up headers
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        worksheet.getRow(1).values = ['Time', ...days];
-
-        // Style headers
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFE0E0E0' }
-        };
+        worksheet.cell(1, 1).string('Time').style(headerStyle);
+        days.forEach((day, index) => {
+          worksheet.cell(1, index + 2).string(day).style(headerStyle);
+        });
 
         // Get unique time slots
         const timeSlots = [...new Set(
@@ -148,7 +156,7 @@ class ExportService {
         // Fill data
         timeSlots.forEach((timeSlot, rowIndex) => {
           const row = rowIndex + 2;
-          worksheet.getCell(row, 1).value = timeSlot;
+          worksheet.cell(row, 1).string(timeSlot).style(cellStyle);
 
           days.forEach((day, dayIndex) => {
             const dayEntries = batchData[day] || [];
@@ -157,25 +165,19 @@ class ExportService {
             );
 
             if (entry) {
-              const cellValue = `${entry.subject_code}\\n${entry.faculty_first_name} ${entry.faculty_last_name}\\n${entry.room_number}`;
-              worksheet.getCell(row, dayIndex + 2).value = cellValue;
-              worksheet.getCell(row, dayIndex + 2).alignment = { 
-                wrapText: true, 
-                vertical: 'middle' 
-              };
+              const cellValue = `${entry.subject_code}\n${entry.faculty_first_name} ${entry.faculty_last_name}\n${entry.room_number}`;
+              worksheet.cell(row, dayIndex + 2).string(cellValue).style(cellStyle);
             }
           });
         });
 
-        // Auto-fit columns
-        worksheet.columns.forEach(column => {
-          column.width = 15;
-        });
-
-        // Set row height
-        for (let i = 2; i <= timeSlots.length + 1; i++) {
-          worksheet.getRow(i).height = 60;
+        // Set column widths
+        worksheet.column(1).setWidth(15);
+        for (let i = 2; i <= days.length + 1; i++) {
+          worksheet.column(i).setWidth(20);
         }
+
+        sheetIndex++;
       });
 
       // Set response headers
@@ -189,7 +191,7 @@ class ExportService {
       );
 
       // Write to response
-      await workbook.xlsx.write(res);
+      workbook.write('timetable.xlsx', res);
 
     } catch (error) {
       console.error('Excel export error:', error);

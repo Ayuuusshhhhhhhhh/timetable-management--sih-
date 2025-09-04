@@ -94,11 +94,76 @@ const getClassroomsByType = async (req, res) => {
   }
 };
 
+const getClassroomStats = async (req, res) => {
+  try {
+    const stats = await Classroom.getStats();
+    res.json({ stats });
+  } catch (error) {
+    console.error('Get classroom stats error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const searchClassrooms = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const classrooms = await Classroom.findAll();
+    const filteredClassrooms = classrooms.filter(classroom => 
+      classroom.room_number.toLowerCase().includes(q.toLowerCase()) ||
+      classroom.building.toLowerCase().includes(q.toLowerCase()) ||
+      classroom.type.toLowerCase().includes(q.toLowerCase())
+    );
+
+    res.json({ classrooms: filteredClassrooms });
+  } catch (error) {
+    console.error('Search classrooms error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const getAvailableClassrooms = async (req, res) => {
+  try {
+    const { time_slot_id, academic_year, type } = req.query;
+    
+    const availableClassrooms = await Classroom.getAvailableClassrooms(
+      time_slot_id, 
+      academic_year, 
+      type
+    );
+
+    res.json({ classrooms: availableClassrooms });
+  } catch (error) {
+    console.error('Get available classrooms error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+const getClassroomSchedule = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { academic_year } = req.query;
+
+    const schedule = await Classroom.getSchedule(id, academic_year);
+    res.json({ schedule });
+  } catch (error) {
+    console.error('Get classroom schedule error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getAllClassrooms,
   getClassroomById,
   createClassroom,
   updateClassroom,
   deleteClassroom,
-  getClassroomsByType
+  getClassroomsByType,
+  getClassroomStats,
+  searchClassrooms,
+  getAvailableClassrooms,
+  getClassroomSchedule
 };
